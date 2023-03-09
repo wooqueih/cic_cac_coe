@@ -5,7 +5,7 @@ struct Coordinates {
   int x;
   int y;
 };
-enum State { EMPTY, CIRCLE, CROSS };
+enum State { EMPTY = 0, CIRCLE = -1, CROSS = 1 };
 struct Game {
   enum State **state;
   const int SIZE;
@@ -48,9 +48,47 @@ void printGame(const struct Game *game) {
   }
   return;
 }
+enum Winner checkWin(const struct Game *game, const enum State *turn) {
+  int check[game->SIZE * 2 + 2];
+  for (int i = 0; i < game->SIZE * 2 + 2; i++) {
+    check[i] = 0;
+  }
+  enum Winner winner;
+  int cell_number;
+  for (int i = 0; i < game->SIZE; i++) {
+    for (int j = 0; j < game->SIZE; j++) {
+      cell_number = i * game->SIZE + j;
+      if (i == j) {
+        check[0] += game->state[i][j];
+      }
+      if (game->SIZE - 1 - i == j) {
+        check[1] += game->state[i][j];
+      }
+      for (int k = 0; k < game->SIZE; k++) {
+        if (k == i) {
+          check[i + game->SIZE + 2] += game->state[i][j];
+        }
+      }
 
+      if (cell_number % game->SIZE == j) {
+        check[j + 2] += game->state[i][j];
+      }
+    }
+  }
+
+  for (int i = 0; i < game->SIZE * 2 + 2; i++) {
+    // printf("| %d | \n", check[i]);
+    if (check[i] == game->SIZE) {
+      return WINNER_CROSS;
+    }
+    if (check[i] == -1 * (game->SIZE)) {
+      return WINNER_CIRCLE;
+    }
+  }
+  return WINNER_NOT_YET_DECIDED;
+}
 struct Coordinates getNextMove(const enum State *turn) {
-  char move_input[4];
+  char move_input[3];
   char current_player;
   switch (*turn) {
   case CIRCLE:
@@ -64,9 +102,9 @@ struct Coordinates getNextMove(const enum State *turn) {
     break;
   }
   printf("\n%c's turn:\n", current_player);
-  scanf("%3s", move_input);
-  if (!(move_input[0] < 58 && move_input[0] > 48) ||
-      !(move_input[1] < 58 && move_input[1] > 48)) {
+  scanf("%2s", move_input);
+  if (!(move_input[0] < 58 && move_input[0] > 47) ||
+      !(move_input[1] < 58 && move_input[1] > 47)) {
 
     printf("\ninvalid move, try again\n");
     struct Coordinates move_coords = getNextMove(turn);
@@ -77,6 +115,8 @@ struct Coordinates getNextMove(const enum State *turn) {
 }
 int nextRound(struct Game *game, enum State *turn, enum Winner *winner) {
   printGame(game);
+  struct Coordinates move = getNextMove(turn);
+  game->state[move.x][move.y] = *turn;
   switch (*turn) {
   case CROSS:
     *turn = CIRCLE;
@@ -87,11 +127,8 @@ int nextRound(struct Game *game, enum State *turn, enum Winner *winner) {
   case EMPTY:
     return -1;
   }
-  struct Coordinates move = getNextMove(turn);
-  game->state[move.x][move.y] = *turn;
-  // checkWin(game);
-  if (winner == WINNER_NOT_YET_DECIDED) {
-    printf("sadasfa");
+  *winner = checkWin(game, turn);
+  if (*winner == WINNER_NOT_YET_DECIDED) {
     nextRound(game, turn, winner);
   }
   return 0;
@@ -112,6 +149,7 @@ int main() {
   enum State turn = CROSS;
   enum Winner winner = WINNER_NOT_YET_DECIDED;
   nextRound(&game, &turn, &winner);
-  // printf("%d,%d", move.x, move.y);
+  (winner == WINNER_CROSS) ? printf("\nX wins!\n\n") : printf("\nO wins!\n\n");
+  printGame(&game);
   return 0;
 }
